@@ -24,6 +24,7 @@ import { ResetPassword } from './pages/auth/ResetPassword';
 import { ShopDetailView } from './pages/shop/ShopDetailView';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { AdminDashboard } from './components/admin/AdminDashboard';
 
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {
   const { user } = useAuth();
@@ -61,9 +62,20 @@ const AppRoutes = () => {
           element={
             user?.role === ROLES.SHOP_OWNER ? (
               <Navigate to="/shop-dashboard" replace />
+            ) : user?.role === ROLES.ADMIN ? (
+              <Navigate to="/admin-dashboard" replace />
             ) : (
               <Navigate to="/dashboard" replace />
             )
+          }
+        />
+
+        <Route
+          path="/admin-dashboard"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
+              <AdminDashboard />
+            </ProtectedRoute>
           }
         />
 

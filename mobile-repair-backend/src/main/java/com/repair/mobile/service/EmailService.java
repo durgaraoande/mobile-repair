@@ -6,16 +6,11 @@ import com.repair.mobile.enums.RequestStatus;
 import com.repair.mobile.util.EmailTemplate;
 
 import jakarta.annotation.PreDestroy;
-import jakarta.mail.Message;
-import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
-import jakarta.mail.internet.MimeBodyPart;
-import jakarta.mail.internet.MimeMultipart;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
@@ -318,6 +313,27 @@ public class EmailService {
             sendEmailWithRetry(message);
         } catch (Exception e) {
             log.error("Failed to send review notification", e);
+            throw new EmailSendException(e.getMessage());
+        }
+    }
+
+    public void sendNotification(String email, String title, String message, String string, Object object) {
+        log.info("Sending notification to: {}", email);
+
+        try {
+            rateLimiter.acquire();
+            String htmlContent = EmailTemplate.getNotificationHtml(title, message);
+            
+            MimeMessage mimeMessage = emailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
+            helper.setFrom(FROM_ADDRESS);
+            helper.setTo(email);
+            helper.setSubject(title);
+            helper.setText(htmlContent, true);
+
+            sendEmailWithRetry(mimeMessage);
+        } catch (Exception e) {
+            log.error("Failed to send notification", e);
             throw new EmailSendException(e.getMessage());
         }
     }

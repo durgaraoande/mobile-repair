@@ -329,4 +329,17 @@ public class EmailTemplate {
         
         return HTML_WRAPPER.replace("{content}", content);
     }
+
+    public static String getNotificationHtml(String title, String message) {
+        String content = """
+            <div class="header">
+                <h2>%s</h2>
+            </div>
+            <div class="content">
+                <p>%s</p>
+            </div>
+        """.formatted(title, message);
+        
+        return HTML_WRAPPER.replace("{content}", content);
+    }
 }

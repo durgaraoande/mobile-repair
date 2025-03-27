@@ -1,5 +1,6 @@
 package com.repair.mobile.service;
 
+import com.repair.mobile.dto.PageResponseDto;
 import com.repair.mobile.dto.QuoteResponseDto;
 import com.repair.mobile.dto.RepairRequestDto;
 import com.repair.mobile.dto.RepairRequestResponseDto;
@@ -20,18 +21,18 @@ import lombok.extern.slf4j.Slf4j;
 
 import org.apache.coyote.BadRequestException;
 import org.modelmapper.ModelMapper;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
 
 @Service
@@ -42,9 +43,7 @@ public class RepairRequestService {
     private final RepairRequestRepository requestRepository;
     private final RepairQuoteRepository quoteRepository;
     private final UserRepository userRepository;
-    private final FileStorageService fileStorageService;
     private final NotificationService notificationService;
-    private final QuoteService quoteService;
     private final ModelMapper modelMapper;
     private final CloudinaryService cloudinaryService;
 
@@ -246,6 +245,61 @@ public List<RepairRequestResponseDto> getPendingRequests() {
         
         requestRepository.save(request);
     }
+
+
+    // Add these methods to your existing RepairRequestService class
+
+@Transactional(readOnly = true)
+public PageResponseDto<RepairRequestResponseDto> getAllRequests(
+        RequestStatus status, 
+        Pageable pageable) {
+    log.info("Fetching repair requests with status: {}, pagination: {}", 
+             status, pageable);
+
+    Specification<RepairRequest> spec = Specification.where(null);
+
+    // Add status filter if provided
+    if (status != null) {
+        spec = spec.and((root, query, criteriaBuilder) -> 
+            criteriaBuilder.equal(root.get("status"), status));
+    }
+
+    // Fetch paginated results with specification
+    Page<RepairRequest> requestPage = requestRepository.findAll(spec, pageable);
+
+    // Map to custom PageResponseDto
+    return new PageResponseDto<>(
+        requestPage.getContent().stream()
+            .map(request -> modelMapper.map(request, RepairRequestResponseDto.class))
+            .collect(Collectors.toList()),
+        requestPage.getNumber(),
+        requestPage.getSize(),
+        requestPage.getTotalElements(),
+        requestPage.getTotalPages(),
+        requestPage.isLast(),
+        requestPage.isFirst(),
+        requestPage.isEmpty()
+    );
+}
+
+public List<RepairRequestResponseDto> getRequestsByStatus(String statusStr) throws BadRequestException {
+    try {
+        RequestStatus status = RequestStatus.valueOf(statusStr.toUpperCase());
+        return requestRepository.findByStatus(status).stream()
+            .map(request -> modelMapper.map(request, RepairRequestResponseDto.class))
+            .collect(Collectors.toList());
+    } catch (IllegalArgumentException e) {
+        throw new BadRequestException("Invalid status: " + statusStr);
+    }
+}
+
+public RepairRequestResponseDto getRequestById(Long requestId) {
+    RepairRequest request = requestRepository.findById(requestId)
+            .orElseThrow(() -> new ResourceNotFoundException("Repair request not found with ID: " + requestId));
+    
+    return modelMapper.map(request, RepairRequestResponseDto.class);
+}
+
 
 private Set<String> uploadImages(List<MultipartFile> images) {
     Set<String> imageIds = new HashSet<>();

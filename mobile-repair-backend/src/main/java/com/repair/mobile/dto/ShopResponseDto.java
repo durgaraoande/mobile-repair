@@ -2,8 +2,10 @@ package com.repair.mobile.dto;
 
 import lombok.Data;
 
-import java.util.List;
+import java.time.LocalDateTime;
 import java.util.Set;
+
+import com.repair.mobile.enums.ShopStatus;
 
 @Data
 public class ShopResponseDto {
@@ -22,4 +24,15 @@ public class ShopResponseDto {
     private Set<String> photoUrls;
     private Double latitude;
     private Double longitude;
+
+    private ShopStatus status;
+    private String statusReason;
+    private boolean verified;
+    private LocalDateTime verificationDate;
+
+    // Admin-specific statistics (these fields will only be populated for admin
+    // requests)
+    private Long totalRepairs;
+    private Double averageRating;
+    private Double completionRate;
 }

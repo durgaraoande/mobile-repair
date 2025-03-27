@@ -6,6 +6,8 @@ import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
 
+import com.repair.mobile.enums.ShopStatus;
+
 @Data
 @Entity
 @Table(name = "repair_shops")
@@ -61,14 +63,24 @@ public class RepairShop {
 
     private LocalDateTime updatedAt;
 
+    private ShopStatus status;
+
+    private String statusReason;
+
+    private boolean verified = false;
+
+    private LocalDateTime verificationDate;
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
+        status = ShopStatus.PENDING_VERIFICATION;
+        verified = false; 
     }
 
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
-    }
+    } 
 }

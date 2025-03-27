@@ -57,6 +57,12 @@ public class ShopController {
         return ResponseEntity.ok(shopService.getAllShops());
     }
 
+    @GetMapping("/active")
+    public ResponseEntity<List<ShopResponseDto>> getActiveAndVerifiedShops() {
+        log.info("Fetching active and verified shops");
+        return ResponseEntity.ok(shopService.getAllActiveAndVerifiedShops());
+    }
+
     @GetMapping("/{shopId}")
     public ResponseEntity<ShopResponseDto> getShopById(@PathVariable Long shopId) {
         log.info("Fetching shop details for ID: {}", shopId);

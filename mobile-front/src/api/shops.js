@@ -15,7 +15,7 @@ export const shopApi = {
   // Existing public shop methods
   async getAllShops() {
     try {
-      const response = await axios.get('/shops');
+      const response = await axios.get('/shops/active');
       return response.data;
     } catch (error) {
       logger.error('Get all shops failed:', error);

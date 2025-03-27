@@ -1,88 +1,13 @@
-// package com.repair.mobile.security.service;
-
-// import com.repair.mobile.dto.UserRegistrationDto;
-// import com.repair.mobile.dto.UserResponseDto;
-// import com.repair.mobile.dto.UserUpdateDto;
-// import com.repair.mobile.entity.User;
-// import com.repair.mobile.exception.EmailAlreadyExistsException;
-// import com.repair.mobile.exception.ResourceNotFoundException;
-// import com.repair.mobile.repository.UserRepository;
-// import lombok.RequiredArgsConstructor;
-// import lombok.extern.slf4j.Slf4j;
-// import org.modelmapper.ModelMapper;
-// import org.springframework.security.crypto.password.PasswordEncoder;
-// import org.springframework.stereotype.Service;
-// import org.springframework.transaction.annotation.Transactional;
-
-// @Service
-// @Transactional
-// @RequiredArgsConstructor
-// @Slf4j
-// public class UserService {
-//     private final UserRepository userRepository;
-//     private final PasswordEncoder passwordEncoder;
-//     private final ModelMapper modelMapper;
-
-//     public UserResponseDto registerUser(UserRegistrationDto registrationDto) {
-//         log.info("Registering new user with email: {}", registrationDto.getEmail());
-
-//         if (userRepository.existsByEmail(registrationDto.getEmail())) {
-//             throw new EmailAlreadyExistsException("Email already registered: " + registrationDto.getEmail());
-//         }
-
-//         User user = new User();
-//         user.setEmail(registrationDto.getEmail());
-//         user.setPassword(passwordEncoder.encode(registrationDto.getPassword()));
-//         user.setFullName(registrationDto.getFullName());
-//         user.setPhoneNumber(registrationDto.getPhoneNumber());
-//         user.setRole(registrationDto.getRole());
-
-//         User savedUser = userRepository.save(user);
-//         log.info("Successfully registered user with ID: {}", savedUser.getId());
-
-//         return modelMapper.map(savedUser, UserResponseDto.class);
-//     }
-
-//     public UserResponseDto updateUser(Long userId, UserUpdateDto updateDto) {
-//         log.info("Updating user with ID: {}", userId);
-
-//         User user = userRepository.findById(userId)
-//                 .orElseThrow(() -> new ResourceNotFoundException("User not found with ID: " + userId));
-
-//         if (updateDto.getFullName() != null) {
-//             user.setFullName(updateDto.getFullName());
-//         }
-//         if (updateDto.getPhoneNumber() != null) {
-//             user.setPhoneNumber(updateDto.getPhoneNumber());
-//         }
-
-//         User updatedUser = userRepository.save(user);
-//         log.info("Successfully updated user with ID: {}", userId);
-
-//         return modelMapper.map(updatedUser, UserResponseDto.class);
-//     }
-
-//     public UserResponseDto getUserById(Long userId) {
-//         User user = userRepository.findById(userId)
-//                 .orElseThrow(() -> new ResourceNotFoundException("User not found with ID: " + userId));
-//         return modelMapper.map(user, UserResponseDto.class);
-//     }
-
-//     public UserResponseDto getUserByEmail(String email) {
-//         User user = userRepository.findByEmail(email)
-//                 .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + email));
-//         return modelMapper.map(user, UserResponseDto.class);
-//     }
-// }
-
 package com.repair.mobile.security.service;
 
 import com.repair.mobile.dto.*;
 import com.repair.mobile.entity.User;
 import com.repair.mobile.entity.VerificationToken;
 import com.repair.mobile.enums.TokenType;
+import com.repair.mobile.enums.UserStatus;
 import com.repair.mobile.exception.*;
 import com.repair.mobile.repository.UserRepository;
+import com.repair.mobile.security.config.JwtService;
 import com.repair.mobile.service.EmailService;
 import com.repair.mobile.validator.EmailValidator;
 import lombok.RequiredArgsConstructor;
@@ -94,7 +19,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.concurrent.CompletableFuture;
+import java.util.List;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -107,6 +34,7 @@ public class UserService {
     private final EmailService emailService;
     private final VerificationTokenService verificationTokenService;
     private final EmailValidator emailValidator;
+    private final JwtService jwtService;
 
     @Value("${user.email.verification.required:true}")
     private boolean emailVerificationRequired;
@@ -357,5 +285,47 @@ public void resendVerificationEmail(String email) {
         if (!password.matches(".*[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>/?].*")) {
             throw new InvalidPasswordException("Password must contain at least one special character");
         }
+    }
+
+    // Add these methods to your existing UserService class
+
+    public List<UserResponseDto> getAllUsers() {
+        return userRepository.findAll().stream()
+            .map(user -> modelMapper.map(user, UserResponseDto.class))
+            .collect(Collectors.toList());
+    }
+
+    public UserResponseDto updateUserStatus(Long userId, UserStatus status, String reason) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with ID: " + userId));
+        
+        user.setStatus(status);
+        if (reason != null && !reason.isEmpty()) {
+            user.setStatusReason(reason);
+        }
+        // Log the reason for status change
+        log.info("Updating user status for user ID: {} to {}. Reason: {}", userId, status, reason);
+        
+        // If blocking a user, also log them out (e.g., invalidate tokens)
+        if (status == UserStatus.BLOCKED) {
+            jwtService.invalidateAllTokensForUser(user.getEmail());
+        }
+        
+        User updatedUser = userRepository.save(user);
+        return modelMapper.map(updatedUser, UserResponseDto.class);
+    }
+
+    public void adminInitiatePasswordReset(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with ID: " + userId));
+        
+        // Generate password reset token
+        String token = UUID.randomUUID().toString();
+        user.setResetToken(token);
+        user.setResetTokenExpiryDate(LocalDateTime.now().plusHours(24));
+        userRepository.save(user);
+        
+        // Send reset email
+        emailService.sendPasswordResetEmail(user.getEmail(), token);
     }
 }

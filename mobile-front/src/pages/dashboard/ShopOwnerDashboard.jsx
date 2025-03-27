@@ -36,15 +36,6 @@ export const ShopOwnerDashboard = () => {
     fetchShopData();
   }, [user.id]);
 
-  const handleUpdateShop = async (values) => {
-    try {
-      const updatedShop = await shopApi.updateShop(shop.id, values);
-      setShop(updatedShop);
-    } catch (error) {
-      setError('Failed to update shop profile');
-    }
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -55,6 +46,20 @@ export const ShopOwnerDashboard = () => {
 
   if (shouldRedirect) {
     return <Navigate to="/shop-registration" replace />;
+  }
+
+  // If shop is not verified, show pending approval message
+  if (shop && !shop.verified) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded">
+          <p className="text-yellow-700 font-semibold">
+            Your shop is currently pending admin approval. 
+            We are reviewing your shop details and will notify you once approved.
+          </p>
+        </div>
+      </div>
+    );
   }
 
   if (!shop) return null;

@@ -7,6 +7,7 @@ import io.jsonwebtoken.security.Keys;
 import io.jsonwebtoken.security.SignatureException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
@@ -18,6 +19,10 @@ import java.util.function.Function;
 
 @Service
 public class JwtService {
+
+    @Autowired
+    private TokenBlacklistService tokenBlacklistService;
+    
     private static final Logger log = LoggerFactory.getLogger(JwtService.class);
     
     // Default expiration times
@@ -42,13 +47,18 @@ public class JwtService {
         log.info("Generating token for user {} with {}expiration", username, 
                  rememberMe ? "extended " : "standard ");
         
-        return Jwts.builder()
+        String token = Jwts.builder()
                 .setClaims(claims)
                 .setSubject(username)
                 .setIssuedAt(new Date(System.currentTimeMillis()))
                 .setExpiration(expiration)
                 .signWith(getKey(), SignatureAlgorithm.HS256)
                 .compact();
+        
+        // Track the token for potential invalidation
+        tokenBlacklistService.trackUserToken(username, token);
+        
+        return token;
     }
 
     private Key getKey() {
@@ -86,10 +96,10 @@ public class JwtService {
 
     public boolean validateToken(String token, UserDetails userDetails) {
         final String userName = extractUserName(token);
-        return (userName.equals(userDetails.getUsername()) && !isTokenExpired(token));
+        return (userName.equals(userDetails.getUsername()) && !isTokenExpired(token) && !isTokenBlacklisted(token));
     }
 
-    private boolean isTokenExpired(String token) {
+    public boolean isTokenExpired(String token) {
         return extractExpiration(token).before(new Date());
     }
 
@@ -105,5 +115,19 @@ public class JwtService {
         } catch (Exception e) {
             return -1; // Invalid or expired token
         }
+    }
+
+    public void invalidateAllTokensForUser(String email) {
+        tokenBlacklistService.invalidateTokensForUser(email);
+        log.info("Invalidated all tokens for user: {}", email);
+    }
+    
+    public boolean isTokenBlacklisted(String token) {
+        return tokenBlacklistService.isBlacklisted(token);
+    }
+    
+    // Method to clean up expired tokens
+    public void cleanupExpiredBlacklistedTokens() {
+        tokenBlacklistService.cleanupExpiredTokens(this::isTokenExpired);
     }
 }

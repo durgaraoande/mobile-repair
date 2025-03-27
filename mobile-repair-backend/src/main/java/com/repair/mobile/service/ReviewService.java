@@ -27,7 +27,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -212,5 +211,30 @@ public boolean hasUserReviewedRequest(Long customerId, Long requestId) {
             .orElseThrow(() -> new ResourceNotFoundException("Review not found for repair request ID: " + requestId));
 
         return modelMapper.map(review, ReviewResponseDto.class);
+    }
+
+        @Transactional(readOnly = true)
+    public Map<String, Object> getReviewAnalytics() {
+        log.info("Fetching review analytics");
+    
+        // Total number of reviews
+        Long totalReviews = reviewRepository.count();
+    
+        // Average rating across all reviews
+        Double averageRating = reviewRepository.getAverageRating();
+    
+        // Rating distribution (count of reviews for each rating from 1 to 5)
+        Map<Integer, Long> ratingCounts = new HashMap<>();
+        for (int i = 1; i <= 5; i++) {
+            ratingCounts.put(i, reviewRepository.countByRating(i));
+        }
+    
+        // Prepare analytics data
+        Map<String, Object> analytics = new HashMap<>();
+        analytics.put("totalReviews", totalReviews);
+        analytics.put("averageRating", averageRating != null ? averageRating : 0.0);
+        analytics.put("ratingCounts", ratingCounts);
+    
+        return analytics;
     }
 }

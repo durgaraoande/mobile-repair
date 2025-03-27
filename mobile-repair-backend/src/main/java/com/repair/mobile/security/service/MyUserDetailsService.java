@@ -2,18 +2,11 @@ package com.repair.mobile.security.service;
 
 import com.repair.mobile.entity.User;
 import com.repair.mobile.repository.UserRepository;
-import lombok.Data;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
-
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor

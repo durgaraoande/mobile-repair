@@ -1,11 +1,11 @@
 package com.repair.mobile.entity;
 
 import com.repair.mobile.enums.UserRole;
+import com.repair.mobile.enums.UserStatus;
+
 import jakarta.persistence.*;
 import lombok.Data;
 import java.time.LocalDateTime;
-import java.util.HashSet;
-import java.util.Set;
 
 @Data
 @Entity
@@ -31,7 +31,7 @@ public class User {
     @Column(nullable = false)
     private UserRole role;
 
-    private boolean enabled = false;  // Changed default to false for email verification
+    private boolean enabled = false;
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -41,6 +41,11 @@ public class User {
     private LocalDateTime passwordUpdatedAt;
     private String resetToken;
     private LocalDateTime resetTokenExpiryDate;
+
+    @Enumerated(EnumType.STRING)
+    private UserStatus status = UserStatus.ACTIVE;
+
+    private String statusReason;
 
     @PrePersist
     protected void onCreate() {

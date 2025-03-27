@@ -27,6 +27,9 @@ public class JwtFilter extends OncePerRequestFilter {
 
     @Autowired
     private JwtService jwtService;
+    
+    @Autowired
+    private TokenBlacklistService tokenBlacklistService;
 
     @Autowired
     private ApplicationContext context;
@@ -59,6 +62,13 @@ public class JwtFilter extends OncePerRequestFilter {
 
             // If we have a token, try to validate it
             if (token != null) {
+                // First check if token is blacklisted
+                if (tokenBlacklistService.isBlacklisted(token)) {
+                    log.warn("Blocked request with blacklisted token");
+                    handleJwtException(response, "Token has been invalidated");
+                    return;
+                }
+                
                 userName = jwtService.extractUserName(token);
                 log.debug("Username from token: {}", userName);
 
@@ -99,4 +109,3 @@ public class JwtFilter extends OncePerRequestFilter {
         response.getWriter().flush();
     }
 }
-
